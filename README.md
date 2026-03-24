@@ -1,21 +1,16 @@
 # inflearn-mcp
 
-인프런 공개 커뮤니티 질문을 MCP로 조회할 수 있는 서버입니다.  
-사용자는 이 저장소를 직접 실행할 필요 없이, 배포된 MCP 서버 URL만 있으면 `Claude Code`나 `Codex`에 연결해서 바로 사용할 수 있습니다.
+인프런 공개 커뮤니티 질문을 MCP로 조회할 수 있는 서버입니다.
+배포된 MCP 서버 URL만 있으면 `Claude Code`나 `Codex`에 연결해서 바로 사용할 수 있습니다.
 
-## 할 수 있는 일
+## 제공 도구
 
-- 닉네임, 제목, 키워드로 질문 검색
-- 인프런 인기 글 조회
-- MCP 클라이언트 안에서 인프런 질문 데이터를 바로 호출
-
-현재 제공하는 도구:
-
-- `healthcheck()`
-- `search_questions(keyword, page=1)`
-- `get_trending_questions(date, limit=5, type="all")`
-- `get_question(url)`  
-  현재는 상세 파싱이 아직 구현되지 않아 placeholder 응답만 반환합니다.
+| 도구 | 설명 | 파라미터 |
+|------|------|----------|
+| `healthcheck` | 서버 상태 확인 | 없음 |
+| `search_questions` | 키워드로 질문 검색 | `keyword` (필수), `page` (기본값: 1) |
+| `get_trending_questions` | 인기 커뮤니티 글 조회 | `date` (기본값: 오늘), `limit` (1~20, 기본값: 5), `type` (기본값: "all") |
+| `get_question` | 질문 상세 조회 | `url` |
 
 ## 연결 방법
 
@@ -61,7 +56,7 @@ url = "https://inflearn-mcp.devkey.workers.dev/mcp"
 
 ## 사용 예시
 
-작성자 검색:
+키워드로 질문 검색:
 
 ```text
 search_questions(keyword="withkey", page=1)
