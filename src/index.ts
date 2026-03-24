@@ -172,17 +172,17 @@ const fetchJson = async (url: string, bindings?: Bindings) => {
   return (await response.json()) as unknown;
 };
 
-const fetchSearchResults = async (keyword: string | undefined, page: number, bindings?: Bindings) => {
+const fetchSearchResults = async (keyword: string | undefined, page: number, order: string, status: string, tags: string[], bindings?: Bindings) => {
   const { baseUrl, apiBaseUrl } = getConfig(bindings);
   const searchUrl = new URL(apiBaseUrl);
-  searchUrl.searchParams.set('status', '');
+  searchUrl.searchParams.set('status', status);
   if (keyword && keyword.trim()) {
     searchUrl.searchParams.set('s', keyword);
   } else {
     searchUrl.searchParams.set('s', '');
   }
-  searchUrl.searchParams.set('tag', '');
-  searchUrl.searchParams.set('order', 'recent');
+  searchUrl.searchParams.set('tag', tags.join(','));
+  searchUrl.searchParams.set('order', order);
   searchUrl.searchParams.set('page', String(page));
   const payload = await fetchJson(searchUrl.toString(), bindings);
   const records = extractQuestionRecords(payload);
@@ -259,10 +259,13 @@ const createServer = (bindings?: Bindings) => {
       inputSchema: z.object({
         keyword: z.string().min(1),
         page: z.number().int().min(1).default(1),
+        order: z.enum(['recent', 'score', 'comment', 'recommend']).default('score').describe('정렬: score(정확도순), recent(최신순), comment(답변많은순), recommend(좋아요순)'),
+        status: z.enum(['', 'resolved', 'unresolved']).default('').describe('상태: resolved(해결됨), unresolved(미해결), 빈문자열(전체)'),
+        tags: z.array(z.string()).default([]).describe('태그 필터 (예: ["javascript", "react"])'),
       }),
     },
-    async ({ keyword, page = 1 }: { keyword: string; page?: number }) => {
-      const { searchUrl, results } = await fetchSearchResults(keyword, page, bindings);
+    async ({ keyword, page = 1, order = 'score', status = '', tags = [] }: { keyword: string; page?: number; order?: string; status?: string; tags?: string[] }) => {
+      const { searchUrl, results } = await fetchSearchResults(keyword, page, order, status, tags, bindings);
 
       return {
         content: [

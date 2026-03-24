@@ -8,7 +8,7 @@
 | 도구 | 설명 | 파라미터 |
 |------|------|----------|
 | `healthcheck` | 서버 상태 확인 | 없음 |
-| `search_questions` | 키워드로 질문 검색 | `keyword` (필수), `page` (기본값: 1) |
+| `search_questions` | 키워드로 질문 검색 | `keyword` (필수), `page` (기본값: 1), `order` (정렬: recent/score/comment/recommend, 기본값: recent), `status` (상태: resolved/unresolved/빈문자열, 기본값: 전체), `tags` (태그 필터: string[], 기본값: []) |
 | `get_trending_questions` | 인기 커뮤니티 글 조회 | `date` (기본값: 오늘), `limit` (1~20, 기본값: 5), `type` (기본값: "all") |
 
 ## 연결 방법
@@ -52,8 +52,12 @@ url = "https://inflearn-mcp.devkey.workers.dev/mcp"
 ## 사용 예시
 
 ```text
+"인프런에서 React 관련 질문 검색해줘"
+"인프런 커뮤니티에서 아직 미해결인 JavaScript 질문 찾아줘"
+"인프런에서 좋아요 많은 순으로 Spring Boot 질문 보여줘"
+"인프런에서 docker 태그가 달린 질문 중 해결된 것만 보여줘"
+"이번 주 인프런 인기 게시글 5개 알려줘"
 "인프런 mcp 사용해서 withkey가 작성한 글 모두 보여줘"
-"java와 관련된 질문 보여줘"
 ```
 
 ## 참고
