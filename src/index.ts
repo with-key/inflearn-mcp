@@ -262,7 +262,7 @@ const createServer = (bindings?: Bindings) => {
       }),
     },
     async ({ keyword, page = 1 }: { keyword: string; page?: number }) => {
-      const { searchUrl, payload, results } = await fetchSearchResults(keyword, page, bindings);
+      const { searchUrl, results } = await fetchSearchResults(keyword, page, bindings);
 
       return {
         content: [
@@ -275,7 +275,6 @@ const createServer = (bindings?: Bindings) => {
                 url: searchUrl,
                 result_count: results.length,
                 results,
-                raw: payload,
               },
               null,
               2
@@ -288,7 +287,6 @@ const createServer = (bindings?: Bindings) => {
           url: searchUrl,
           result_count: results.length,
           results,
-          raw: payload,
         },
       };
     }
@@ -306,7 +304,7 @@ const createServer = (bindings?: Bindings) => {
       }),
     },
     async ({ date = new Date().toISOString().slice(0, 10), limit = 5, type = 'all' }: { date?: string; limit?: number; type?: string }) => {
-      const { rankUrl, payload, results } = await fetchTrendingQuestions(date, limit, type, bindings);
+      const { rankUrl, results } = await fetchTrendingQuestions(date, limit, type, bindings);
 
       return {
         content: [
@@ -320,7 +318,6 @@ const createServer = (bindings?: Bindings) => {
                 url: rankUrl,
                 result_count: results.length,
                 results,
-                raw: payload,
               },
               null,
               2
@@ -334,7 +331,6 @@ const createServer = (bindings?: Bindings) => {
           url: rankUrl,
           result_count: results.length,
           results,
-          raw: payload,
         },
       };
     }
