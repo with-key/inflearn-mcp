@@ -10,7 +10,6 @@
 | `healthcheck` | 서버 상태 확인 | 없음 |
 | `search_questions` | 키워드로 질문 검색 | `keyword` (필수), `page` (기본값: 1) |
 | `get_trending_questions` | 인기 커뮤니티 글 조회 | `date` (기본값: 오늘), `limit` (1~20, 기본값: 5), `type` (기본값: "all") |
-| `get_question` | 질문 상세 조회 | `url` |
 
 ## 연결 방법
 
