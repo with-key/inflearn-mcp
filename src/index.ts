@@ -1,15 +1,15 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import { z } from 'zod';
 
 type Bindings = {
   INFLEARN_BASE_URL?: string;
-};
-
-type SessionEntry = {
-  server: McpServer;
-  transport: WebStandardStreamableHTTPServerTransport;
+  INFLEARN_API_BASE_URL?: string;
+  INFLEARN_RANK_API_BASE_URL?: string;
+  MCP_SERVER_NAME?: string;
+  MCP_SERVER_VERSION?: string;
 };
 
 type ApiQuestionRecord = Record<string, unknown>;
@@ -29,14 +29,6 @@ type SearchResult = {
   answerCount: number | null;
 };
 
-const SERVER_NAME = 'inflearn-mcp';
-const SERVER_VERSION = '0.1.0';
-const DEFAULT_BASE_URL = 'https://www.inflearn.com/community/questions';
-const DEFAULT_API_BASE_URL = 'https://www.inflearn.com/api/community-posts/question';
-const DEFAULT_RANK_API_BASE_URL = 'https://www.inflearn.com/api/v1/community/rank/post';
-const SESSION_HEADER = 'mcp-session-id';
-
-const sessions = new Map<string, SessionEntry>();
 const asString = (value: unknown): string | null => {
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -154,11 +146,22 @@ const extractQuestionRecords = (payload: unknown): ApiQuestionRecord[] => {
   return [];
 };
 
-const fetchJson = async (url: string) => {
+const getConfig = (bindings?: Bindings) => ({
+  serverName: bindings?.MCP_SERVER_NAME?.trim() || 'inflearn-mcp',
+  serverVersion: bindings?.MCP_SERVER_VERSION?.trim() || '0.1.0',
+  baseUrl: bindings?.INFLEARN_BASE_URL?.trim() || 'https://www.inflearn.com/community/questions',
+  apiBaseUrl:
+    bindings?.INFLEARN_API_BASE_URL?.trim() || 'https://www.inflearn.com/api/community-posts/question',
+  rankApiBaseUrl:
+    bindings?.INFLEARN_RANK_API_BASE_URL?.trim() || 'https://www.inflearn.com/api/v1/community/rank/post',
+});
+
+const fetchJson = async (url: string, bindings?: Bindings) => {
+  const { serverName, serverVersion } = getConfig(bindings);
   const response = await fetch(url, {
     headers: {
       accept: 'application/json, text/plain, */*',
-      'user-agent': `${SERVER_NAME}/${SERVER_VERSION} (+cloudflare-worker)`,
+      'user-agent': `${serverName}/${serverVersion} (+cloudflare-worker)`,
     },
   });
 
@@ -169,8 +172,9 @@ const fetchJson = async (url: string) => {
   return (await response.json()) as unknown;
 };
 
-const fetchSearchResults = async (keyword: string | undefined, page: number) => {
-  const searchUrl = new URL(DEFAULT_API_BASE_URL);
+const fetchSearchResults = async (keyword: string | undefined, page: number, bindings?: Bindings) => {
+  const { baseUrl, apiBaseUrl } = getConfig(bindings);
+  const searchUrl = new URL(apiBaseUrl);
   searchUrl.searchParams.set('status', '');
   if (keyword && keyword.trim()) {
     searchUrl.searchParams.set('s', keyword);
@@ -180,9 +184,9 @@ const fetchSearchResults = async (keyword: string | undefined, page: number) => 
   searchUrl.searchParams.set('tag', '');
   searchUrl.searchParams.set('order', 'recent');
   searchUrl.searchParams.set('page', String(page));
-  const payload = await fetchJson(searchUrl.toString());
+  const payload = await fetchJson(searchUrl.toString(), bindings);
   const records = extractQuestionRecords(payload);
-  const results = records.map((record) => normalizeQuestionRecord(record, DEFAULT_BASE_URL));
+  const results = records.map((record) => normalizeQuestionRecord(record, baseUrl));
 
   return {
     searchUrl: searchUrl.toString(),
@@ -191,16 +195,17 @@ const fetchSearchResults = async (keyword: string | undefined, page: number) => 
   };
 };
 
-const fetchTrendingQuestions = async (date: string, limit: number, type: string) => {
-  const rankUrl = new URL(DEFAULT_RANK_API_BASE_URL);
+const fetchTrendingQuestions = async (date: string, limit: number, type: string, bindings?: Bindings) => {
+  const { baseUrl, rankApiBaseUrl } = getConfig(bindings);
+  const rankUrl = new URL(rankApiBaseUrl);
   rankUrl.searchParams.set('date', date);
   rankUrl.searchParams.set('limit', String(limit));
   rankUrl.searchParams.set('type', type);
   rankUrl.searchParams.set('usedBy', 'gnb');
 
-  const payload = await fetchJson(rankUrl.toString());
+  const payload = await fetchJson(rankUrl.toString(), bindings);
   const records = extractQuestionRecords(payload);
-  const results = records.map((record) => normalizeQuestionRecord(record, DEFAULT_BASE_URL));
+  const results = records.map((record) => normalizeQuestionRecord(record, baseUrl));
 
   return {
     rankUrl: rankUrl.toString(),
@@ -210,9 +215,10 @@ const fetchTrendingQuestions = async (date: string, limit: number, type: string)
 };
 
 const createServer = (bindings?: Bindings) => {
+  const { serverName, serverVersion } = getConfig(bindings);
   const server = new McpServer({
-    name: SERVER_NAME,
-    version: SERVER_VERSION,
+    name: serverName,
+    version: serverVersion,
   });
 
   server.registerTool(
@@ -229,8 +235,8 @@ const createServer = (bindings?: Bindings) => {
           text: JSON.stringify(
             {
               status: 'ok',
-              server: SERVER_NAME,
-              version: SERVER_VERSION,
+              server: serverName,
+              version: serverVersion,
             },
             null,
             2
@@ -239,8 +245,8 @@ const createServer = (bindings?: Bindings) => {
       ],
       structuredContent: {
         status: 'ok',
-        server: SERVER_NAME,
-        version: SERVER_VERSION,
+        server: serverName,
+        version: serverVersion,
       },
     })
   );
@@ -256,7 +262,7 @@ const createServer = (bindings?: Bindings) => {
       }),
     },
     async ({ keyword, page = 1 }: { keyword: string; page?: number }) => {
-      const { searchUrl, payload, results } = await fetchSearchResults(keyword, page);
+      const { searchUrl, payload, results } = await fetchSearchResults(keyword, page, bindings);
 
       return {
         content: [
@@ -289,18 +295,18 @@ const createServer = (bindings?: Bindings) => {
   );
 
   server.registerTool(
-    'get_trending_questions',
+    'get_trending_posts',
     {
-      title: 'Get Trending Inflearn Questions',
+      title: 'Get Trending Inflearn Posts',
       description: 'Get weekly popular community posts from Inflearn rank API.',
       inputSchema: z.object({
-        date: z.string().min(10).default('2026-03-25'),
+        date: z.string().min(10).default(new Date().toISOString().slice(0, 10)),
         limit: z.number().int().min(1).max(20).default(5),
         type: z.string().min(1).default('all'),
       }),
     },
-    async ({ date = '2026-03-25', limit = 5, type = 'all' }: { date?: string; limit?: number; type?: string }) => {
-      const { rankUrl, payload, results } = await fetchTrendingQuestions(date, limit, type);
+    async ({ date = new Date().toISOString().slice(0, 10), limit = 5, type = 'all' }: { date?: string; limit?: number; type?: string }) => {
+      const { rankUrl, payload, results } = await fetchTrendingQuestions(date, limit, type, bindings);
 
       return {
         content: [
@@ -334,126 +340,55 @@ const createServer = (bindings?: Bindings) => {
     }
   );
 
-  server.registerTool(
-    'get_question',
-    {
-      title: 'Get Inflearn Question',
-      description: 'Fetch one public Inflearn question URL and return parsed details.',
-      inputSchema: z.object({
-        url: z.string().url(),
-      }),
-    },
-    async ({ url }: { url: string }) => ({
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              url,
-              title: null,
-              question: null,
-              answers: [],
-              note: 'Worker skeleton: implement Inflearn question parsing here.',
-            },
-            null,
-            2
-          ),
-        },
-      ],
-      structuredContent: {
-        url,
-        title: null,
-        question: null,
-        answers: [],
-        note: 'Worker skeleton: implement Inflearn question parsing here.',
-      },
-    })
-  );
-
   return server;
 };
 
-const isInitializeRequest = (body: unknown): boolean => {
-  if (Array.isArray(body)) {
-    return body.some(
-      (item) =>
-        typeof item === 'object' &&
-        item !== null &&
-        'method' in item &&
-        item.method === 'initialize'
-    );
-  }
-
-  return typeof body === 'object' && body !== null && 'method' in body && body.method === 'initialize';
-};
-
-const createSessionTransport = (bindings?: Bindings) => {
-  const server = createServer(bindings);
-  const transport = new WebStandardStreamableHTTPServerTransport({
-    sessionIdGenerator: () => crypto.randomUUID(),
-    onsessioninitialized: (sessionId: string) => {
-      sessions.set(sessionId, { server, transport });
-    },
-    onsessionclosed: (sessionId: string) => {
-      sessions.delete(sessionId);
-    },
+const createStatelessTransport = () => {
+  return new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined,
   });
-
-  return { server, transport };
 };
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+app.use(
+  '*',
+  cors({
+    origin: '*',
+    allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'mcp-session-id', 'Last-Event-ID', 'mcp-protocol-version'],
+    exposeHeaders: ['mcp-session-id', 'mcp-protocol-version'],
+  })
+);
+
 app.get('/', (c) =>
   c.json({
-    name: SERVER_NAME,
-    version: SERVER_VERSION,
+    name: getConfig(c.env).serverName,
+    version: getConfig(c.env).serverVersion,
     transport: 'streamable-http',
     mcp_endpoint: '/mcp',
     health_endpoint: '/health',
   })
 );
 
-app.get('/health', (c) => c.json({ status: 'ok', server: SERVER_NAME }));
+app.get('/health', (c) => c.json({ status: 'ok', server: getConfig(c.env).serverName }));
 
-app.all('/mcp', async (c) => {
-  const sessionId = c.req.header(SESSION_HEADER);
-  if (sessionId) {
-    const session = sessions.get(sessionId);
-    if (!session) {
-      return c.json(
-        {
-          error: 'Session not found',
-          message: 'Unknown mcp-session-id. Start again with an initialize request.',
-        },
-        404
-      );
-    }
-
-    return session.transport.handleRequest(c.req.raw);
-  }
-
-  if (c.req.method === 'POST') {
-    const body = await c.req.raw.clone().json().catch(() => null);
-    if (!isInitializeRequest(body)) {
-      return c.json(
-        {
-          error: 'Missing session',
-          message: 'The first POST request must be an initialize request.',
-        },
-        400
-      );
-    }
-
-    const { server, transport } = createSessionTransport(c.env);
-    await server.connect(transport);
-    return transport.handleRequest(c.req.raw);
-  }
-
-  const transport = new WebStandardStreamableHTTPServerTransport();
+app.post('/mcp', async (c) => {
+  const transport = createStatelessTransport();
   const server = createServer(c.env);
   await server.connect(transport);
   return transport.handleRequest(c.req.raw);
 });
+
+app.delete('/mcp', (c) => c.json({ status: 'ok' }));
+
+app.get('/mcp', (c) =>
+  c.json({
+    name: getConfig(c.env).serverName,
+    version: getConfig(c.env).serverVersion,
+    transport: 'streamable-http',
+    mcp_endpoint: '/mcp',
+  })
+);
 
 export default app;
