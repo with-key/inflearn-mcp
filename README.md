@@ -14,11 +14,7 @@
 
 ## 연결 방법
 
-```text
-https://inflearn-mcp.devkey.workers.dev/mcp
-```
-
-## Claude Code에서 사용하기
+### Claude Code에서 사용하기
 
 CLI로 추가:
 
@@ -39,7 +35,7 @@ claude mcp add --transport http inflearn https://inflearn-mcp.devkey.workers.dev
 }
 ```
 
-## Codex에서 사용하기
+### Codex에서 사용하기
 
 CLI로 추가:
 
@@ -56,18 +52,12 @@ url = "https://inflearn-mcp.devkey.workers.dev/mcp"
 
 ## 사용 예시
 
-키워드로 질문 검색:
-
 ```text
-search_questions(keyword="withkey", page=1)
-```
-
-인기 글 조회:
-
-```text
-get_trending_questions(date="2026-03-25", limit=10, type="all")
+"인프런 mcp 사용해서 withkey가 작성한 글 모두 보여줘"
+"java와 관련된 질문 보여줘"
 ```
 
 ## 참고
 
 - 공개 접근 가능한 인프런 커뮤니티 데이터만 대상으로 합니다.
+- "인프런" 무관한 커뮤니티 프로젝트 입니다.
